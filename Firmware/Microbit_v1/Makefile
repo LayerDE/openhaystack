@@ -10,7 +10,7 @@ ifeq ($(DEPLOY_PATH),)
 	DEPLOY_PATH := /Volumes/MICROBIT
 endif
 
-offline-finding/build/offline-finding.bin: $(NRF51_SDK_PATH) blessed/.git offline-finding/main.c
+offline-finding/build/offline-finding.bin: $(NRF51_SDK_PATH) blessed/.git offline-finding/*
 	$(MAKE) -C blessed
 	$(MAKE) -C offline-finding
 

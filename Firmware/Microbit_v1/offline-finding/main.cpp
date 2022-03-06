@@ -15,10 +15,16 @@
 
 #include "ll.h"
 
-#define ADV_INTERVAL			2000000	/* 2 s */
+#include "SHA_sha256.h"
+#include "uECC-handle.hpp"
 
-/* don't make `const` so we can replace key in compiled binary image */
-static char public_key[28] = "OFFLINEFINDINGPUBLICKEYHERE!";
+static uint8_t private_key[28];
+static uint8_t public_key[28];
+static uint8_t private_key_init[28] = ":)";
+
+uECC cryptohandler;
+
+#define ADV_INTERVAL			2000000	/* 2 s */
 
 static bdaddr_t addr = {
 	{ 0xFF, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF },
@@ -56,7 +62,37 @@ void fill_adv_template_from_key() {
 	offline_finding_adv_template[29] = public_key[0] >> 6;
 }
 
+int RNG(uint8_t* dest, unsigned int size){
+	for(unsigned int x = 0; x < size; x++)
+		dest[x] = 0;
+	return 0;
+}
+
+void init(){
+	memcpy(private_key, private_key_init, 28);
+	cryptohandler = uECC(RNG);
+	cryptohandler.compute_public_key(private_key, public_key);
+}
+
+void uart_mode(){
+	while(1){
+
+	}
+}
+
+void generate_next_key(const uint8_t* in, uint8_t* private_key, uint8_t* public_key){
+	uint8_t hash[HASH_LENGTH];
+	createHash(in,28,hash);
+	memcpy(private_key,hash,28);
+	cryptohandler.compute_public_key(private_key, public_key);
+}
+
 int main(void) {
+	init();
+	uint8_t empty[28];
+	memset(empty,0,28);
+	if(!memcmp(private_key_init,empty,28))
+		uart_mode();
 	set_addr_from_key();
 	fill_adv_template_from_key();
 
