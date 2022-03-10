@@ -3,19 +3,46 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "nvs_flash.h"
-#include "esp_partition.h"
+#include <nvs_flash.h>
+#include <esp_partition.h>
 
-#include "esp_bt.h"
-#include "esp_gap_ble_api.h"
-#include "esp_gattc_api.h"
-#include "esp_gatt_defs.h"
-#include "esp_bt_main.h"
-#include "esp_bt_defs.h"
-#include "esp_log.h"
-#include "freertos/FreeRTOS.h"
+#include <esp_bt.h>
+#include <esp_gap_ble_api.h>
+#include <esp_gattc_api.h>
+#include <esp_gatt_defs.h>
+#include <esp_bt_main.h>
+#include <esp_bt_defs.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <esp_random.h>     
+
+#include "data.hpp"
+#include "SHA_sha256.h"
+#include "uECC-handle.hpp"
+
 
 static const char* LOG_TAG = "open_haystack";
+
+static uint8_t private_key_init[28];
+static uint8_t private_key[28];
+static uint8_t public_key[28];
+
+static uECC handler;
+
+static int RNG_sha256(uint8_t *dest, unsigned size) {
+  if(size == 0)
+    return 1;
+  const int blocksize = 32;
+  int blocks = size / blocksize + (size % blocksize != 0);
+  data temp = data(blocks * blocksize);
+  esp_fill_random((uint8_t*)temp.get_data(), blocks*blocksize);
+  for(int x = 0; x < blocks - 1; x++)
+    createHash(temp.get_data()+x*blocksize,blocksize,dest+x*blocksize);
+  data end = data(blocksize);
+  createHash(temp.get_data(), blocksize, (uint8_t*)end.get_data());
+  memcpy(dest+blocks*blocksize - 1, end.get_data(),size % blocksize == 0 ? blocksize: size % blocksize);
+  return 1;
+}
 
 /** Callback function for BT events */
 static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
@@ -90,8 +117,18 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
     }
 }
 
-int load_key(uint8_t *dst, size_t size) {
-    const esp_partition_t *keypart = esp_partition_find_first(0x40, 0x00, "key");
+void load_key() {
+    uint8_t keys[28*2];
+    memcpy(keys,private_key_init,28);
+    memcpy(&keys[28],private_key,28);
+    uint8_t hash[32];
+    createHash(keys, 56, hash);
+    memcpy(private_key,&hash[0],28);
+    handler.compute_public_key(private_key,public_key);
+}
+
+int init_key(uint8_t *dst, size_t size){
+    const esp_partition_t *keypart = esp_partition_find_first((esp_partition_type_t)0x40, (esp_partition_subtype_t)0x00, "key");
     if (keypart == NULL) {
         ESP_LOGE(LOG_TAG, "Could not find key partition");
         return 1;
@@ -101,7 +138,8 @@ int load_key(uint8_t *dst, size_t size) {
     if (status != ESP_OK) {
         ESP_LOGE(LOG_TAG, "Could not read key from partition: %s", esp_err_to_name(status));
     }
-    return status;
+    load_key();
+    return (int)status;
 }
 
 void set_addr_from_key(esp_bd_addr_t addr, uint8_t *public_key) {
@@ -120,8 +158,9 @@ void set_payload_from_key(uint8_t *payload, uint8_t *public_key) {
 	payload[29] = public_key[0] >> 6;
 }
 
-void app_main(void)
+extern "C" void app_main(void)
 {
+    handler = uECC(RNG_sha256,uECC_secp224r1());
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
@@ -132,8 +171,8 @@ void app_main(void)
     esp_bluedroid_enable();
 
     // Load the public key from the key partition
-    static uint8_t public_key[28];
-    if (load_key(public_key, sizeof(public_key)) != ESP_OK) {
+
+    if (init_key(private_key_init, sizeof(private_key_init)) != ESP_OK) {
         ESP_LOGE(LOG_TAG, "Could not read the key, stopping.");
         return;
     }
@@ -145,7 +184,7 @@ void app_main(void)
 
     esp_err_t status;
     //register the scan callback function to the gap module
-    if ((status = esp_ble_gap_register_callback(esp_gap_cb)) != ESP_OK) {
+    if ((status = (esp_err_t)esp_gap_cb) != ESP_OK) {
         ESP_LOGE(LOG_TAG, "gap register error: %s", esp_err_to_name(status));
         return;
     }
