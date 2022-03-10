@@ -1,3 +1,6 @@
-[submodule "Firmware/Microbit_v1/blessed"]
-	path = Firmware/Microbit_v1/blessed
-	url = https://github.com/LayerDE/blessed.git
+[submodule "firmware/esp32"]
+	path = firmware/esp32
+	url = https://github.com/LayerDE/openhaystack_esp32.git
+[submodule "firmware/nrf51"]
+	path = firmware/nrf51
+	url = https://github.com/LayerDE/openhaystack_nrf51.git
