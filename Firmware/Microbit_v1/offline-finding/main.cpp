@@ -87,7 +87,7 @@ void generate_next_key(const uint8_t* in, uint8_t* private_key, uint8_t* public_
 	cryptohandler.compute_public_key(private_key, public_key);
 }
 
-int main(void) {
+extern "C" int main(void) {
 	init();
 	uint8_t empty[28];
 	memset(empty,0,28);
