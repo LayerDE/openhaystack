@@ -577,7 +577,7 @@ uECC_VLI_API void uECC_vli_modMult(uECC_word_t* result,
     const uECC_word_t* right,
     const uECC_word_t* mod,
     wordcount_t num_words) {
-    uECC_word_t product = malloc(num_words * uECC_WORD_SIZE *2);
+    uECC_word_t* product = malloc(num_words * uECC_WORD_SIZE *2);
     uECC_vli_mult(product, left, right, num_words);
     uECC_vli_mmod(result, product, mod, num_words);
     free(product);
@@ -587,7 +587,7 @@ uECC_VLI_API void uECC_vli_modMult_fast(uECC_word_t* result,
     const uECC_word_t* left,
     const uECC_word_t* right,
     uECC_Curve curve) {
-    uECC_word_t product = malloc(curve->num_words * uECC_WORD_SIZE *2);
+    uECC_word_t* product = malloc(curve->num_words * uECC_WORD_SIZE *2);
     uECC_vli_mult(product, left, right, curve->num_words);
 #if (uECC_OPTIMIZATION_LEVEL > 0)
     curve->mmod_fast(result, product);
