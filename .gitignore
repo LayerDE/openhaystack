@@ -5,7 +5,7 @@
 ## macOS ## 
 
 .DS_Store
-
+.vscode
 ### Swift ###
 # Xcode
 #

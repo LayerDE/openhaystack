@@ -4,3 +4,6 @@
 [submodule "firmware/nrf51"]
 	path = firmware/nrf51
 	url = https://github.com/LayerDE/openhaystack_nrf51.git
+[submodule "firmware/jb-up-mv"]
+	path = firmware/jb-up-mv
+	url = https://github.com/LayerDE/openhaystack_msp-nrf8001
